@@ -1,0 +1,72 @@
+/* src/App.css */
+
+body {
+  font-family: Arial, sans-serif;
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+.app {
+  display: flex;
+  flex-direction: column;
+}
+
+.header {
+  padding: 20px;
+  background-color: #f8f9fa;
+}
+
+.content {
+  display: flex;
+}
+
+.sidebar {
+  width: 200px;
+  background-color: #343a40;
+  color: white;
+  padding: 20px;
+}
+
+.sidebar ul {
+  list-style: none;
+  padding: 0;
+}
+
+.sidebar li {
+  padding: 10px;
+  cursor: pointer;
+}
+
+.sidebar li.active {
+  background-color: #495057;
+}
+
+.main-content {
+  padding: 20px;
+  flex-grow: 1;
+}
+
+.temperature-humidity-display {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 20px;
+}
+
+.music-player img {
+  width: 100px;
+}
+
+.security-camera {
+  position: relative;
+}
+
+.live-indicator {
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  background-color: red;
+  color: white;
+  padding: 5px;
+  font-weight: bold;
+}
