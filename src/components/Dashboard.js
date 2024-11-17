@@ -22,15 +22,18 @@ const ToggleSwitch = ({ label, isOn, onToggle }) => (
   </div>
 );
 
-// Enhanced Chatbot Component with Gemini Integration
 const Chatbot = ({ devices, setDevices }) => {
   const [messages, setMessages] = useState([
-    { text: "Hello! How can I help you with your smart home today? You can try commands like 'Turn on the living room lights' or 'Turn off the TV in the bedroom'.", isBot: true }
+    { 
+      text: "Hello! I'm your smart home AI assistant. I can help you control your devices and chat with you about anything! Try asking me something or give me a command like 'Turn on the living room lights'.", 
+      isBot: true 
+    }
   ]);
   const [input, setInput] = useState('');
   const [isRecording, setIsRecording] = useState(false);
   const [isListening, setIsListening] = useState(false);
   const [isChatbotOpen, setIsChatbotOpen] = useState(false);
+  const [isTyping, setIsTyping] = useState(false);
   const messagesEndRef = useRef(null);
 
   const scrollToBottom = () => {
@@ -43,34 +46,30 @@ const Chatbot = ({ devices, setDevices }) => {
 
   const handleDeviceCommand = (parsedCommand) => {
     if (!parsedCommand || !parsedCommand.room || !parsedCommand.device) {
-      console.error("Invalid command:", parsedCommand);
       return;
     }
-
-    const room = parsedCommand.room.toLowerCase().replace(' ', '');
-    const device = parsedCommand.device.toLowerCase();
-    const action = parsedCommand.action.includes('on');
-
-    // Map device names to your state keys
+    
     const deviceMapping = {
-      'smart lights': 'Smart Lights',
-      'tv': 'TV',
-      'air conditioner': 'Air Conditioner',
-      'smart curtains': 'Smart Curtains',
-      'air purifier': 'Air Purifier',
-      'smart oven': 'Smart Oven',
-      'coffee maker': 'Coffee Maker',
-      'refrigerator': 'Refrigerator',
-      'garage door': 'Garage Door',
-      'security camera': 'Security Camera',
-      'ev charger': 'EV Charger'
+      'Smart Lights': 'Smart Lights',
+      'TV': 'TV',
+      'Air Conditioner': 'Air Conditioner',
+      'Air Purifier': 'Air Purifier',
+      'Smart Curtains': 'Smart Curtains',
+      'Smart Oven': 'Smart Oven',
+      'Coffee Maker': 'Coffee Maker',
+      'Refrigerator': 'Refrigerator',
+      'Garage Door': 'Garage Door',
+      'Security Camera': 'Security Camera',
+      'EV Charger': 'EV Charger'
     };
 
-    const deviceKey = deviceMapping[device];
-    if (deviceKey) {
+    const device = deviceMapping[parsedCommand.device];
+    const action = parsedCommand.action === 'on';
+
+    if (device) {
       setDevices(prev => ({
         ...prev,
-        [deviceKey]: action
+        [device]: action
       }));
     }
   };
@@ -79,6 +78,8 @@ const Chatbot = ({ devices, setDevices }) => {
     if (!input.trim()) return;
     
     setMessages(prev => [...prev, { text: input, isBot: false }]);
+    setInput('');
+    setIsTyping(true);
     
     try {
       const response = await fetch('http://localhost:3001/api/chatbot', {
@@ -93,20 +94,24 @@ const Chatbot = ({ devices, setDevices }) => {
 
       const data = await response.json();
       
-      setMessages(prev => [...prev, { text: data.response, isBot: true }]);
-      
-      if (data.parsedCommand) {
-        handleDeviceCommand(data.parsedCommand);
-      }
+      // Add slight delay to simulate typing
+      setTimeout(() => {
+        setMessages(prev => [...prev, { text: data.response, isBot: true }]);
+        setIsTyping(false);
+        
+        if (data.parsedCommand && data.isDeviceCommand) {
+          handleDeviceCommand(data.parsedCommand);
+        }
+      }, 500);
+
     } catch (error) {
       console.error("Error in handleSend:", error);
       setMessages(prev => [...prev, { 
         text: "Sorry, I encountered an error. Please try again.", 
         isBot: true 
       }]);
+      setIsTyping(false);
     }
-    
-    setInput('');
   };
 
   const handleVoiceCommand = () => {
@@ -150,6 +155,91 @@ const Chatbot = ({ devices, setDevices }) => {
       setIsListening(false);
     }
   };
+
+  // Add typing indicator component
+  const TypingIndicator = () => (
+    <div className="flex space-x-2 p-3 bg-gray-100 rounded-lg">
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0ms' }}></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '150ms' }}></div>
+      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '300ms' }}></div>
+    </div>
+  );
+
+  return (
+    <>
+      <button
+        onClick={() => setIsChatbotOpen(!isChatbotOpen)}
+        className="fixed bottom-4 right-4 p-3 bg-blue-600 text-white rounded-full shadow-lg hover:bg-blue-700 z-50"
+      >
+        {isChatbotOpen ? 'Close' : 'Chat'}
+      </button>
+
+      {isChatbotOpen && (
+        <div className="fixed bottom-20 right-4 w-96 h-[500px] bg-white rounded-lg shadow-lg flex flex-col z-40">
+          <div className="bg-blue-600 text-white p-4 rounded-t-lg">
+            <h3 className="font-semibold">Smart Home AI Assistant</h3>
+          </div>
+          
+          <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            {messages.map((message, index) => (
+              <div
+                key={index}
+                className={`flex ${message.isBot ? 'justify-start' : 'justify-end'}`}
+              >
+                <div
+                  className={`max-w-[80%] p-3 rounded-lg ${
+                    message.isBot
+                      ? 'bg-gray-100 text-gray-800'
+                      : 'bg-blue-600 text-white'
+                  }`}
+                >
+                  {message.text}
+                </div>
+              </div>
+            ))}
+            {isTyping && (
+              <div className="flex justify-start">
+                <TypingIndicator />
+              </div>
+            )}
+            <div ref={messagesEndRef} />
+          </div>
+          
+          <div className="p-4 border-t">
+            <div className="flex items-center space-x-2">
+              <button
+                onClick={handleVoiceCommand}
+                className={`p-2 rounded-full ${
+                  isRecording ? 'bg-red-500 text-white' : 'bg-gray-200 hover:bg-gray-300'
+                }`}
+              >
+                {isRecording ? <StopCircle size={20} /> : <Mic size={20} />}
+              </button>
+              <input
+                type="text"
+                value={input}
+                onChange={(e) => setInput(e.target.value)}
+                onKeyPress={(e) => e.key === 'Enter' && handleSend()}
+                placeholder="Type your message..."
+                className="flex-1 p-2 border rounded-lg focus:outline-none focus:border-blue-500"
+              />
+              <button
+                onClick={handleSend}
+                className="p-2 bg-blue-600 text-white rounded-full hover:bg-blue-700"
+              >
+                <Send size={20} />
+              </button>
+            </div>
+            {isListening && (
+              <div className="text-sm text-gray-500 mt-2">
+                Listening... Speak now
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+    </>
+  );
 
   return (
     <>
@@ -221,7 +311,7 @@ const Chatbot = ({ devices, setDevices }) => {
       )}
     </>
   );
-};
+}
 
 // Room Diagram Component
 const RoomDiagram = ({ devices }) => {
@@ -468,29 +558,29 @@ const Dashboard = () => {
             </li>
           ))}
           <li>
-  <button
-    onClick={() => setShowRoomDiagram(true)}
-    className={`w-full flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 ${
-      showRoomDiagram ? 'bg-blue-100 text-blue-600' : ''
-    }`}
-  >
-    <Home className="mr-3" size={20} />
-    Room Diagram
-  </button>
-</li>
-</ul>
-</nav>
+            <button
+              onClick={() => setShowRoomDiagram(true)}
+              className={`w-full flex items-center px-4 py-2 text-gray-700 hover:bg-gray-100 ${
+                showRoomDiagram ? 'bg-blue-100 text-blue-600' : ''
+              }`}
+            >
+              <Home className="mr-3" size={20} />
+              Room Diagram
+            </button>
+          </li>
+        </ul>
+      </nav>
 
-{/* Main Content */}
-<div className="flex-1 p-8">
-  {!showRoomDiagram ? (
-    <>
-      <header className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900">Welcome Home, User</h1>
-        <p className="text-gray-600">
-          Manage your {rooms.find((r) => r.id === activeRoom).name} devices and monitor energy usage
-        </p>
-      </header>
+      {/* Main Content */}
+      <div className="flex-1 p-8">
+        {!showRoomDiagram ? (
+          <>
+            <header className="mb-8">
+              <h1 className="text-3xl font-bold text-gray-900">Welcome Home, User</h1>
+              <p className="text-gray-600">
+                Manage your {rooms.find((r) => r.id === activeRoom).name} devices and monitor energy usage
+              </p>
+            </header>
       
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
         <DashboardCard title={`${rooms.find((r) => r.id === activeRoom).name} Devices`}>
@@ -581,10 +671,11 @@ const Dashboard = () => {
   )}
 </div>
 
-{/* Chatbot */}
-<Chatbot />
-</div>
-);
+<div className="relative">
+        <Chatbot devices={devices} setDevices={setDevices} />
+      </div>
+    </div>
+  );
 };
 
 export default Dashboard;
